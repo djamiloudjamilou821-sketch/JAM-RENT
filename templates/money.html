@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Money Dashboard</title>
+
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f6f9;
+        padding: 20px;
+        margin: 0;
+    }
+
+    /* TITLE */
+    h2 {
+        text-align: center;
+        margin-bottom: 10px;
+        color: #2c3e50;
+    }
+
+    /* GRID */
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    /* CARD */
+    .card {
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+        transition: 0.2s ease-in-out;
+    }
+
+    .card:hover {
+        transform: translateY(-3px);
+    }
+
+    /* TEXT */
+    .title {
+        font-size: 13px;
+        color: #777;
+        letter-spacing: 0.3px;
+    }
+
+    .value {
+        font-size: 28px;
+        font-weight: bold;
+        margin-top: 8px;
+    }
+
+    /* COLORS (more modern tones) */
+    .green { color: #27ae60; }
+    .red { color: #e74c3c; }
+    .blue { color: #1f4fff; }
+    .orange { color: #f39c12; }
+
+    /* BACK BUTTON */
+    .back {
+        display: flex;
+        justify-content: center;
+        margin-top: 25px;
+    }
+
+    .back a {
+        text-decoration: none;
+        background: #2c3e50;
+        color: white;
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: 0.2s;
+    }
+
+    .back a:hover {
+        background: #1f4fff;
+    }
+
+    /* MOBILE */
+    @media (max-width: 600px) {
+        .stats {
+            grid-template-columns: 1fr;
+        }
+
+        .value {
+            font-size: 24px;
+        }
+    }
+    </style>
+</head>
+
+<body>
+
+<h2>💰 Money Dashboard</h2>
+
+<div class="stats">
+
+    <!-- TOTAL RENTERS -->
+    <div class="card">
+        <div class="title">👥 Total Renters</div>
+        <div class="value blue">
+            {{ total_renters if total_renters else 0 }}
+        </div>
+    </div>
+
+    <!-- PAID -->
+    <div class="card">
+        <div class="title">✔ Paid Renters</div>
+        <div class="value green">
+            {{ paid_renters if paid_renters else 0 }}
+        </div>
+    </div>
+
+    <!-- LATE -->
+    <div class="card">
+        <div class="title">❌ Late Renters</div>
+        <div class="value red">
+            {{ overdue_renters if overdue_renters else 0 }}
+        </div>
+    </div>
+
+    <!-- WEEKLY FEE -->
+    <div class="card">
+        <div class="title">💵 Weekly Fee</div>
+        <div class="value blue">
+            {{ weekly_fee if weekly_fee else 0 }} CFA
+        </div>
+    </div>
+
+    <!-- COLLECTED -->
+    <div class="card">
+        <div class="title">💰 Collected Money</div>
+        <div class="value green">
+            {{ collected_money if collected_money else 0 }} CFA
+        </div>
+    </div>
+
+    <!-- EXPECTED -->
+    <div class="card">
+        <div class="title">📊 Expected Money</div>
+        <div class="value orange">
+            {{ expected_money if expected_money else 0 }} CFA
+        </div>
+    </div>
+
+</div>
+
+<div class="back">
+    <a href="/dashboard">⬅ Back to Dashboard</a>
+</div>
+
+</body>
+</html>

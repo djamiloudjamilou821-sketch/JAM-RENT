@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html> 
+<head>
+    <title>Rental Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #f4f6f9;
+}
+
+/* HEADER */
+.header {
+    background: #1f4fff;
+    color: white;
+    padding: 15px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+}
+
+/* SEARCH */
+.search {
+    margin: 15px;
+}
+
+.search input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+}
+
+/* STATS */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 15px;
+}
+
+.card-stat {
+    padding: 15px;
+    border-radius: 12px;
+    color: white;
+    text-align: center;
+    font-weight: bold;
+}
+
+.total { background: #2c3e50; }
+.overdue-bg { background: #e74c3c; }
+.paid-bg { background: #27ae60; }
+
+/* CARD */
+.card {
+    background: white;
+    margin: 10px 15px;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+
+.info {
+    font-size: 14px;
+    margin: 5px 0;
+}
+
+/* STATUS ONLY 2 STATES */
+.ok {
+    color: green;
+    font-weight: bold;
+}
+
+.late {
+    color: red;
+    font-weight: bold;
+}
+
+/* FLOAT BUTTON */
+.add-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: #1f4fff;
+    color: white;
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 55px;
+    font-size: 28px;
+    text-decoration: none;
+}
+
+/* BOTTOM NAV */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    font-size: 12px;
+}
+
+.bottom-nav a {
+    text-decoration: none;
+    color: #333;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <h2 style="margin:0;">👋 Rental Dashboard</h2>
+    <small>Weekly system (Wed → Tue)</small>
+</div>
+
+<!-- SEARCH -->
+<form method="GET" action="/dashboard" class="search">
+    <input type="text" name="search" placeholder="Search renter...">
+</form>
+
+<!-- STATS -->
+<div class="stats">
+
+    <a href="/dashboard" style="text-decoration:none;">
+        <div class="card-stat total">
+            <div>{{ total }}</div>
+            <small>Total</small>
+        </div>
+    </a>
+
+    <a href="/dashboard?filter=paid" style="text-decoration:none;">
+        <div class="card-stat paid-bg">
+            <div>{{ paid }}</div>
+            <small>OK</small>
+        </div>
+    </a>
+
+    <a href="/dashboard?filter=overdue" style="text-decoration:none;">
+        <div class="card-stat overdue-bg">
+            <div>{{ overdue }}</div>
+            <small>Late</small>
+        </div>
+    </a>
+
+</div>
+
+<!-- RENTERS -->
+{% for r in renters %}
+<div class="card">
+
+    <h3>{{ r[1] }}</h3>
+
+    <div class="info">📞 {{ r[2] }}</div>
+    <div class="info">📍 {{ r[3] }}</div>
+
+    <!-- DUE -->
+    <div class="info">
+        ⏳ {{ r[-3] }}
+    </div>
+
+    <!-- DEBT (REAL TIME) -->
+    <div class="info">
+        {% if r[-2]|int > 0 %}
+            <span class="late">💰 {{ r[-2] }} CFA</span>
+        {% else %}
+            <span class="ok">💰 0 CFA</span>
+        {% endif %}
+    </div>
+
+</div>
+{% endfor %}
+<!-- FLOAT BUTTON -->
+<a href="/add" class="add-btn">+</a>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+    <a href="/home">🏠<br>Home</a>
+    <a href="/renters">👥<br>Renters</a>
+    <a href="/money">💰<br>Money</a>
+    <a href="/verify-user">🔐<br>Password</a>
+</div>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/static/sw.js");
+}
+</script>
+
+</body>
+</html>
