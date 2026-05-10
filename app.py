@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, session
-import sqlite3
+import psycopg2
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
@@ -10,17 +10,25 @@ WEEKLY_FEE = 1000
 
 ADMIN_PASSWORD = "1234"
 
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://rentaluser:4936BHYDV6inTneH0gk5K9g2NwoLhByY@dpg-d7vnu1tckfvc73eqf3hg-a.oregon-postgres.render.com/rentaldb_xk9v"
+)
+
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
+
 def check_admin_password(password):
     return password == ADMIN_PASSWORD
 # ================= DATABASE INIT =================
 def init_db():
-    conn = sqlite3.connect("database.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
     # 👤 RENTERS TABLE (CLEAN VERSION)
     c.execute("""
         CREATE TABLE IF NOT EXISTS renters (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT,
             phone TEXT,
             address TEXT,
@@ -34,7 +42,7 @@ def init_db():
     # 💳 PAYMENTS TABLE
     c.execute("""
         CREATE TABLE IF NOT EXISTS payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             renter_id INTEGER,
             amount INTEGER,
             payment_date TEXT
@@ -43,15 +51,15 @@ def init_db():
     # PASSWORD
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         username TEXT,
         password TEXT
     )
 """)
-    c.execute("SELECT * FROM users WHERE username=?", ("admin",))
+    c.execute("SELECT * FROM users WHERE username=%s", ("admin",))
     if not c.fetchone():
         hashed = generate_password_hash("1234")
-        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", ("admin", hashed))
+        c.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ("admin", hashed))
 
     conn.commit()
     conn.close()
@@ -83,7 +91,7 @@ def get_status(renter_id, start_date, today, cursor):
     # 💰 total paid
     cursor.execute("""
         SELECT SUM(amount) FROM payments
-        WHERE renter_id=?
+        WHERE renter_id=%s
     """, (renter_id,))
 
     total_paid = cursor.fetchone()[0] or 0
@@ -113,10 +121,10 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        conn = sqlite3.connect("database.db")
+        conn = get_db_connection()
         c = conn.cursor()
 
-        c.execute("SELECT * FROM users WHERE username=?", (username,))
+        c.execute("SELECT * FROM users WHERE username=%s", (username,))
         user = c.fetchone()
         conn.close()
 
@@ -151,7 +159,7 @@ def add():
         start_date = today
         due_date = today + timedelta(days=7)
 
-        conn = sqlite3.connect("database.db")
+        conn = get_db_connection()
         c = conn.cursor()
 
         c.execute("""
@@ -164,7 +172,7 @@ def add():
                 paid,
                 last_payment_date
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (
             name,
             phone,
@@ -193,7 +201,7 @@ def dashboard():
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
     filter_type = request.args.get("filter")
@@ -202,7 +210,7 @@ def dashboard():
     if search:
         c.execute("""
             SELECT * FROM renters
-            WHERE name LIKE ? OR phone LIKE ? OR address LIKE ?
+            WHERE name LIKE %s OR phone LIKE %s OR address LIKE %s
         """, (f"%{search}%", f"%{search}%", f"%{search}%"))
     else:
         c.execute("SELECT * FROM renters")
@@ -258,7 +266,7 @@ def renters():
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
     c.execute("SELECT * FROM renters")
@@ -282,7 +290,7 @@ def money():
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
     c.execute("SELECT * FROM renters")
@@ -323,13 +331,13 @@ def renter_profile(id):
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
     # =============================
     # 👤 GET RENTER
     # =============================
-    c.execute("SELECT * FROM renters WHERE id=?", (id,))
+    c.execute("SELECT * FROM renters WHERE id=%s", (id,))
     renter = c.fetchone()
 
     if not renter:
@@ -342,7 +350,7 @@ def renter_profile(id):
     c.execute("""
         SELECT amount, payment_date
         FROM payments
-        WHERE renter_id=?
+        WHERE renter_id=%s
         ORDER BY payment_date DESC
     """, (id,))
     payments = c.fetchall()
@@ -388,10 +396,10 @@ def edit_renter(id):
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
-    c.execute("SELECT * FROM renters WHERE id=?", (id,))
+    c.execute("SELECT * FROM renters WHERE id=%s", (id,))
     renter = c.fetchone()
 
     if not renter:
@@ -408,7 +416,7 @@ def edit_renter(id):
         password = request.form.get("password", "").strip()
 
         # 🔐 CHECK USER PASSWORD
-        c.execute("SELECT password FROM users WHERE username=?", (session["user"],))
+        c.execute("SELECT password FROM users WHERE username=%s", (session["user"],))
         data = c.fetchone()
 
         if not data or not check_password_hash(data[0], password):
@@ -417,8 +425,8 @@ def edit_renter(id):
 
         c.execute("""
             UPDATE renters
-            SET name=?, phone=?, address=?
-            WHERE id=?
+            SET name=%s, phone=%s, address=%s
+            WHERE id=%s
         """, (name, phone, address, id))
 
         conn.commit()
@@ -434,10 +442,10 @@ def delete(id):
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
-    c.execute("SELECT * FROM renters WHERE id=?", (id,))
+    c.execute("SELECT * FROM renters WHERE id=%s", (id,))
     renter = c.fetchone()
 
     if not renter:
@@ -448,15 +456,15 @@ def delete(id):
 
         password = request.form.get("password", "").strip()
 
-        c.execute("SELECT password FROM users WHERE username=?", (session["user"],))
+        c.execute("SELECT password FROM users WHERE username=%s", (session["user"],))
         data = c.fetchone()
 
         if not data or not check_password_hash(data[0], password):
             conn.close()
             return "❌ Wrong password"
 
-        c.execute("DELETE FROM payments WHERE renter_id=?", (id,))
-        c.execute("DELETE FROM renters WHERE id=?", (id,))
+        c.execute("DELETE FROM payments WHERE renter_id=%s", (id,))
+        c.execute("DELETE FROM renters WHERE id=%s", (id,))
 
         conn.commit()
         conn.close()
@@ -471,11 +479,11 @@ def pay(id):
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_db_connection()
     c = conn.cursor()
 
     # 👤 GET RENTER
-    c.execute("SELECT * FROM renters WHERE id=?", (id,))
+    c.execute("SELECT * FROM renters WHERE id=%s", (id,))
     renter = c.fetchone()
 
     if not renter:
@@ -487,7 +495,7 @@ def pay(id):
         password = request.form.get("password")
 
         # 🔐 OPTIONAL SECURITY (same system as pay/delete)
-        c.execute("SELECT password FROM users WHERE username=?", (session["user"],))
+        c.execute("SELECT password FROM users WHERE username=%s", (session["user"],))
         data = c.fetchone()
 
         if not data or not check_password_hash(data[0], password):
@@ -501,7 +509,7 @@ def pay(id):
     # 🔍 CHECK IF ALREADY PAID THIS WEEK
     c.execute("""
         SELECT * FROM payments
-        WHERE renter_id=? AND payment_date BETWEEN ? AND ?
+        WHERE renter_id=%s AND payment_date BETWEEN %s AND %s
     """, (
         id,
         week_start.strftime("%Y-%m-%d"),
@@ -532,7 +540,7 @@ def pay(id):
     # 💳 SAVE PAYMENT
     c.execute("""
         INSERT INTO payments (renter_id, amount, payment_date)
-        VALUES (?, ?, ?)
+        VALUES (%s, %s, %s)
     """, (
         id,
         amount,
@@ -575,15 +583,15 @@ def new_password():
         if new_password != confirm_password:
             return "❌ New passwords do not match"
 
-        conn = sqlite3.connect("database.db")
+        conn = get_db_connection()
         c = conn.cursor()
 
         hashed = generate_password_hash(new_password)
 
         c.execute("""
             UPDATE users
-            SET password=?
-            WHERE username=?
+            SET password=%s
+            WHERE username=%s
         """, (hashed, session["verify_user"]))
 
         conn.commit()
@@ -606,10 +614,10 @@ def verify_user():
         password = request.form["password"]
         username = session["user"]
 
-        conn = sqlite3.connect("database.db")
+        conn = get_db_connection()
         c = conn.cursor()
 
-        c.execute("SELECT password FROM users WHERE username=?", (username,))
+        c.execute("SELECT password FROM users WHERE username=%s", (username,))
         data = c.fetchone()
         conn.close()
 
