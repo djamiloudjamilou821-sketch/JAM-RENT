@@ -10,10 +10,8 @@ WEEKLY_FEE = 1000
 
 ADMIN_PASSWORD = "1234"
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://rentaluser:4936BHYDV6inTneH0gk5K9g2NwoLhByY@dpg-d7vnu1tckfvc73eqf3hg-a.oregon-postgres.render.com/rentaldb_xk9v"
-)
+DATABASE_URL ="postgresql://postgres.oceavsrrbcsgzwiwvjgl:D6zy46b+jQ?aMbg@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
+
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
